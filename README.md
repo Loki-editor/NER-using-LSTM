@@ -44,28 +44,31 @@ Evaluate the model performance on test data.
 ### Name: LOKESH S
 ### Register Number: 212224240079
 ```python
+# Model definition and instantiation
 class BiLSTMTagger(nn.Module):
-    def __init__(self, vocab_size, tagset_size, embedding_dim=50, hidden_dim=100):
+    def __init__(self, vocab_size, embedding_dim, hidden_dim, tagset_size):
         super(BiLSTMTagger, self).__init__()
-        self.embedding=nn.Embedding(vocab_size,embedding_dim)
-        self.dropout=nn.Dropout(0.1)
-        self.lstm=nn.LSTM(embedding_dim,hidden_dim,batch_first=True,bidirectional=True)
-        self.fc=nn.Linear(hidden_dim*2,tagset_size)
+        self.embedding = nn.Embedding(vocab_size, embedding_dim)
+        self.dropout = nn.Dropout(0.1)
+        self.lstm = nn.LSTM(embedding_dim, hidden_dim, batch_first=True, bidirectional=True)
+        self.fc = nn.Linear(hidden_dim * 2, tagset_size)
 
-    def forward(self,x):
-        x=self.embedding(x)
-        x=self.dropout(x)
-        x,_=self.lstm(x)
+    def forward(self, input_ids):
+        x = self.embedding(input_ids)
+        x = self.dropout(x)
+        x, _ = self.lstm(x)
         return self.fc(x)
 
-
-model=BiLSTMTagger(len(word2idx)+1,len(tag2idx)).to(device)
-loss_fn=nn.CrossEntropyLoss()
-optimizer=torch.optim.Adam(model.parameters(),lr=0.001)
+embedding_dim = 128 # Example value
+hidden_dim = 256    # Example value
 
 
-# Training and Evaluation Functions
-def train_model(model,train_loader,test_loader,loss_fn,optimixer,epochs=10):
+model = BiLSTMTagger(len(word2idx)+1, embedding_dim, hidden_dim, len(tag2idx)).to(device)
+loss_fn = nn.CrossEntropyLoss()
+optimizer = torch.optim.Adam(model.parameters(),lr=0.001)
+
+
+def train_model(model,train_loader,test_loader,loss_fn,optimixer,epochs=3):
   train_losses,val_losses=[],[]
   for epoch in range(epochs):
     model.train()
@@ -94,6 +97,21 @@ def train_model(model,train_loader,test_loader,loss_fn,optimixer,epochs=10):
     print(f"Epoch {epoch+1}: Train Loss = {total_loss:.4f}, Val Loss = {val_loss:.4f}")
 
   return train_losses,val_losses
+
+def evaluate_model(model, test_loader, X_test, y_test):
+    model.eval()
+    true_tags, pred_tags = [], []
+    with torch.no_grad():
+        for batch in test_loader:
+            input_ids = batch["input_ids"].to(device)
+            labels = batch["labels"].to(device)
+            outputs = model(input_ids)
+            preds = torch.argmax(outputs, dim=-1)
+            for i in range(len(labels)):
+                for j in range(len(labels[i])):
+                    if labels[i][j] != tag2idx["O"]:
+                        true_tags.append(idx2tag[labels[i][j].item()])
+                        pred_tags.append(idx2tag[preds[i][j].item()])
 
 
 ```
